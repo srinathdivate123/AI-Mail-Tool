@@ -2,7 +2,7 @@ import email
 import imaplib
 import time
 import pandas as pd
-from similarity import Similarity
+from calculateSimilarity import Similarity
 import email
 from email.header import decode_header
 from email.mime.text import MIMEText

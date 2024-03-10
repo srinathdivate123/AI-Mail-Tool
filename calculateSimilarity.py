@@ -14,13 +14,11 @@ class Similarity:
         self.ps = PorterStemmer()
         self.stop_words = set(stopwords.words("english"))
         self.emails = emails
-        self.emails.drop(self.emails.query(
-            "To == '' | From == '' | Body == ''"
-        ).index, inplace=True)
+        self.emails.drop(self.emails.query("To == '' | From == '' | Body == ''").index, inplace=True)
         self.vect = TfidfVectorizer(stop_words='english', max_df=0.50, min_df=2)
         self.X = self.vect.fit_transform(self.emails.Body.astype('U'))
         self.X_dense = self.X.todense()
-        self.coords = PCA(n_components=2).fit_transform(np.asarray(self.X_dense))
+        self.coords = PCA(n_components = 2).fit_transform(np.asarray(self.X_dense))
         self.data_frame = pd.DataFrame(self.coords, columns =['x', 'y'])
         self.data_frame = self.data_frame.dropna()
         self.features = self.vect.get_feature_names_out()
@@ -32,15 +30,6 @@ class Similarity:
         self.vec_train = self.vec.fit_transform(self.emails.Body.astype('U'))
         self.cosine_sim = linear_kernel(self.vec_train[0:1], self.vec_train).flatten()
 
-    def top_tfidf_feats(self,row, features, top_n=20):
-        topn_ids = np.argsort(row)[::-1][:top_n]
-        top_feats = [(features[i], row[i]) for i in topn_ids]
-        df = pd.DataFrame(top_feats, columns=['features', 'score'])
-        return df
-    
-    def top_feats_in_doc(self,X, features, row_id, top_n=25):
-        row = np.squeeze(X[row_id].toarray())
-        return self.top_tfidf_feats(row, features, top_n)
 
     def rec_email_process(self,rec_emailFrom,rec_emailSub,rec_emailbody):
         self.emails_after_rec = self.emails
@@ -59,23 +48,3 @@ class Similarity:
         print("Similarity: ", max(similarity_value))
         first_rec_email_index = self.related_rec_email_indices[1]
         return self.emails_after_rec.Body[first_rec_email_index], max(similarity_value)
-
-    def top_feats_per_cluster(self,X, y, features, min_tfidf=0.1, top_n=25):
-        dfs = []
-        labels = np.unique(y)
-        for label in labels:
-            ids = np.where(y==label) 
-            feats_df = self.top_mean_feats(X, features, ids, min_tfidf=min_tfidf, top_n=top_n)
-            feats_df.label = label
-            dfs.append(feats_df)
-        return dfs
-
-    def top_mean_feats(self,X, features,
-     grp_ids=None, min_tfidf=0.1, top_n=25):
-        if grp_ids:
-            D = X[grp_ids].toarray()
-        else:
-            D = X.toarray()
-        D[D < min_tfidf] = 0
-        tfidf_means = np.mean(D, axis=0)
-        return self.top_tfidf_feats(tfidf_means, features, top_n)
